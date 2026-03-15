@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creator Portfolio Console</title>
+    <style>
+        :root {
+            --purple-1: #ec09e5;
+            --purple-2: #B19EEF;
+            --purple-3: #ea3ed3;
+            --bg-dark: #0a0a0f;
+            --text-color: white;
+            --box-bg: rgba(15, 10, 25, 0.7);
+            --box-border: rgba(255, 255, 255, 0.08);
+            --dock-bg: rgba(255, 255, 255, 0.03);
+            --dock-border: rgba(255, 255, 255, 0.1);
+            --dock-hover-bg: rgba(177, 158, 239, 0.2);
+            --transition-speed: 0.4s;
+            --main-anim: slideIn 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* --- THEMES --- */
+        .theme-red { --purple-1: #ff3333; --purple-2: #ff9999; --purple-3: #ff6666; --dock-hover-bg: rgba(255, 51, 51, 0.2); }
+        .theme-dark { --purple-1: #333333; --purple-2: #cccccc; --purple-3: #666666; --bg-dark: #000000; --text-color: #eeeeee; --box-bg: rgba(5, 5, 5, 0.8); --dock-hover-bg: rgba(204, 204, 204, 0.2); }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-dark); color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden; min-height: 100vh; cursor: none;
+            padding-bottom: 120px;
+            transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
+        }
+
+        /* --- LOADER --- */
+        #loader {
+            position: fixed; inset: 0; z-index: 100000; background: #050508; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; gap: 20px; transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out;
+        }
+        .loader-spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; }
+        .loader-text { color: white; font-family: monospace; letter-spacing: 4px; font-size: 0.9em; opacity: 0.7; animation: pulseText 1.5s infinite alternate; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulseText { from { opacity: 0.3; } to { opacity: 1; } }
+
+        /* --- MOBILE WARNING --- */
+        #mobile-warning { display: none; position: fixed; inset: 0; background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(10px); color: white; z-index: 10000; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; font-weight: bold; font-size: 1.2em; }
+        @media (max-width: 800px) { #mobile-warning { display: flex; } #main-content { display: none; } }
+
+        /* --- BACKGROUNDS --- */
+        .aurora-bg { position: fixed; inset: 0; z-index: -3; overflow: hidden; background: var(--bg-dark); transition: background-color var(--transition-speed) ease; }
+        .blob { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.5; animation: moveBlob 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1); }
+        .blob1 { width: 60vw; height: 60vw; background: var(--purple-1); top: -20%; left: -10%; }
+        .blob2 { width: 50vw; height: 50vw; background: var(--purple-2); bottom: -20%; right: -10%; animation-delay: -5s; }
+        @keyframes moveBlob { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(150px, 100px) scale(1.4); } }
+
+        .code-overlay {
+            position: fixed; top: -20%; left: -20%; width: 140%; height: 140%; z-index: -2; color: var(--purple-2);
+            font-family: monospace; font-size: 22px; opacity: 0.25; white-space: pre; pointer-events: none; user-select: none;
+            transform: rotateX(15deg) rotateZ(-10deg) scale(1.1); animation: scrollCode 70s linear infinite;
+        }
+        @keyframes scrollCode { from { transform: rotateX(15deg) rotateZ(-10deg) scale(1.1) translateY(0); } to { transform: rotateX(15deg) rotateZ(-10deg) scale(1.1) translateY(-30%); } }
+
+        /* --- CUSTOM CURSOR --- */
+        #cursor-dot { position: fixed; width: 8px; height: 8px; background: white; border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); }
+        #cursor-ring { position: fixed; width: 35px; height: 35px; border: 2px solid var(--purple-2); border-radius: 50%; pointer-events: none; z-index: 9998; transform: translate(-50%, -50%); transition: border-color 0.2s ease, transform 0.1s ease; }
+        .trail-pixel { position: fixed; width: 5px; height: 5px; background: var(--purple-1); pointer-events: none; z-index: 9997; animation: fadeTrail 0.4s linear forwards; }
+        @keyframes fadeTrail { 0% { opacity: 1; } 100% { opacity: 0; transform: scale(0); } }
+
+        /* --- NAVIGATION DOCK --- */
+        .dock-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--dock-bg); backdrop-filter: blur(20px); border: 1px solid var(--dock-border); border-radius: 24px; display: flex; gap: 10px; padding: 12px; z-index: 1000; }
+        .dock-item { color: var(--text-color); background: transparent; border: none; padding: 12px 20px; font-weight: 600; border-radius: 16px; cursor: none; transition: 0.3s ease; }
+        .dock-item:hover, .dock-item.active { background: var(--dock-hover-bg); transform: translateY(-8px); box-shadow: 0 8px 20px rgba(177, 158, 239, 0.3); }
+
+        /* --- THEME SELECTOR --- */
+        #theme-selector { position: fixed; top: 20px; right: 20px; z-index: 1000; background: rgba(15, 10, 25, 0.8); backdrop-filter: blur(15px); border: 1px solid var(--purple-2); border-radius: 12px; padding: 10px 16px; color: white; font-family: monospace; font-size: 14px; cursor: none; outline: none; transition: 0.3s; appearance: none; -webkit-appearance: none; text-align: center; }
+        #theme-selector:hover { background: var(--dock-hover-bg); border-color: var(--purple-1); }
+        #theme-selector option { background: #111; color: white; }
+
+        /* --- SOCIAL SIDEBAR --- */
+        .social-sidebar { position: fixed; left: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index: 1000; }
+        .social-btn { position: relative; width: 45px; height: 45px; border-radius: 12px; background: var(--dock-bg); backdrop-filter: blur(10px); border: 1px solid var(--dock-border); color: var(--text-color); display: flex; justify-content: center; align-items: center; text-decoration: none; transition: 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67); cursor: none; }
+        .social-btn:hover { background: var(--purple-2); color: black; transform: scale(1.1) translateX(8px); box-shadow: 0 5px 15px rgba(177, 158, 239, 0.4); }
+        .social-btn svg { width: 22px; height: 22px; fill: currentColor; }
+        .social-btn .tooltip { position: absolute; left: 60px; background: black; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75em; font-family: monospace; opacity: 0; pointer-events: none; transition: 0.2s; white-space: nowrap; border: 1px solid var(--purple-2); }
+        .social-btn:hover .tooltip { opacity: 1; left: 55px; }
+
+        /* --- CONTENT TABS & ACRYLIC CARDS --- */
+        .tab-content { display: none; padding: 60px 20px 60px 80px; max-width: 750px; margin: 0 auto; }
+        .tab-content.active { display: block; animation: var(--main-anim); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .acrylic-box { background: var(--box-bg); backdrop-filter: blur(15px); border: 1px solid var(--box-border); border-radius: 20px; padding: 30px; margin-bottom: 40px; position: relative; opacity: 0; transform: translateY(40px); transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease; }
+        .acrylic-box.visible { opacity: 1; transform: translateY(0); }
+        .box-3d:hover { transform: translateY(-5px) scale(1.02); border-color: var(--purple-2); box-shadow: 0 15px 40px rgba(0,0,0,0.4); z-index: 50; }
+        
+        .acrylic-box:hover h2, .acrylic-box:hover h3.project-title { animation: glitch 0.5s ease-in-out; }
+        @keyframes glitch { 0% { transform: translateX(0); } 20% { transform: translateX(-2px); } 40% { transform: translateX(2px); } 60% { transform: translateX(-1px); } 80% { transform: translateX(1px); } 100% { transform: translateX(0); } }
+
+        /* --- LANYARD STYLES --- */
+        #lanyard-status { display: flex; align-items: flex-start; gap: 20px; cursor: none; }
+        .status-dot { width: 16px; height: 16px; border-radius: 50%; background: gray; position: absolute; bottom: 2px; right: 2px; border: 3px solid #0f0a19; }
+        .status-online { background: #43b581; box-shadow: 0 0 12px #43b581; }
+        .status-idle { background: #faa61a; }
+        .status-dnd { background: #f04747; }
+        .lanyard-badge { background: var(--box-border); color: white; padding: 4px 10px; border-radius: 8px; font-size: 0.7em; font-weight: 800; text-transform: uppercase; border: 1px solid var(--box-border); }
+        .lanyard-module { margin-top: 12px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 12px; border: 1px solid var(--box-border); display: flex; align-items: center; gap: 12px; }
+
+        /* --- POSTS / MEDIA CONTENT --- */
+        .post-img, .post-video { width: 100%; max-height: 400px; object-fit: cover; border-radius: 12px; margin-bottom: 20px; display: block; background: rgba(0,0,0,0.3); border: none; }
+        .post-date { font-size: 0.85em; color: #777; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;}
+        .external-link { display: inline-block; margin-top: 15px; color: var(--purple-2); text-decoration: none; font-weight: bold; border: 1px solid var(--purple-2); padding: 8px 16px; border-radius: 8px; transition: 0.3s; cursor: none; }
+        .external-link:hover { background: var(--purple-2); color: black; }
+        
+        .filters { display: flex; gap: 12px; margin-bottom: 40px; justify-content: center; }
+        .filter-btn { background: rgba(255,255,255,0.05); color: var(--text-color); border: 1px solid var(--purple-2); padding: 10px 24px; border-radius: 30px; cursor: none; transition: 0.3s ease;}
+        .filter-btn.active { background: var(--purple-2); color: black; font-weight: bold; }
+
+        /* --- PROJECTS --- */
+        .project-item { cursor: none; }
+        .project-title { margin: 0; color: var(--purple-2); font-weight: 800; font-size: 1.5em; cursor: none;}
+        .project-details { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out, padding-top 0.5s ease-out, opacity 0.3s; opacity: 0; }
+        .project-item.expanded .project-details { max-height: 2000px; padding-top: 20px; opacity: 1; transition: max-height 0.8s ease-in, padding-top 0.5s ease-in, opacity 0.5s 0.2s; }
+    </style>
+</head>
+<body class="theme-normal">
+
+    <div id="loader">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">INITIALIZING SYSTEM</div>
+    </div>
+
+    <div id="mobile-warning">
+        <h2>Mobile View Not Supported</h2>
+        <p>This terminal interface is optimized for desktop viewports. Please connect from a PC for the full experience.</p>
+    </div>
+
+    <div class="social-sidebar">
+        <a href="https://steamcommunity.com/id/temmm7322/" target="_blank" class="social-btn">
+            <svg viewBox="0 0 24 24"><path d="M11.979 0C5.356 0 0 5.373 0 12c0 2.22.618 4.316 1.706 6.136l4.607-6.522c-.066-.34-.105-.69-.105-1.047 0-2.88 2.334-5.214 5.214-5.214 2.88 0 5.214 2.334 5.214 5.214 0 2.88-2.334 5.214-5.214 5.214-.52 0-1.018-.08-1.488-.225l-3.35 4.743C8.428 23.367 10.153 24 11.979 24 18.602 24 24 18.627 24 12S18.602 0 11.979 0zm0 7.825c2.31 0 4.184 1.873 4.184 4.183 0 2.31-1.874 4.184-4.184 4.184-2.31 0-4.184-1.873-4.184-4.184 0-2.31 1.874-4.183 4.184-4.183zm-7.64 6.75l-2.484 3.518C.683 16.425 0 14.288 0 12c0-6.627 5.373-12 12-12 6.627 0 12 5.373 12 12s-5.373 12-12 12c-1.636 0-3.193-.34-4.636-.932l3.41-4.828c.386.115.795.176 1.218.176 2.31 0 4.184-1.874 4.184-4.184s-1.874-4.184-4.184-4.184c-2.31 0-4.184 1.874-4.184 4.184 0 .373.05.732.14 1.074l-4.225 5.98v-.002z"/></svg>
+            <div class="tooltip">Steam</div>
+        </a>
+        <a href="https://www.roblox.com/users/2588759111/profile" target="_blank" class="social-btn">
+            <svg viewBox="0 0 24 24"><path d="M5.38 0l18.62 4.41-4.41 19.59-19.59-4.41L5.38 0zm6.9 8.24l-3.23 3.32 3.33 3.23 3.23-3.33-3.33-3.22z"/></svg>
+            <div class="tooltip">Roblox 1</div>
+        </a>
+        <a href="https://www.roblox.com/users/3002944358/profile" target="_blank" class="social-btn">
+            <svg viewBox="0 0 24 24"><path d="M5.38 0l18.62 4.41-4.41 19.59-19.59-4.41L5.38 0zm6.9 8.24l-3.23 3.32 3.33 3.23 3.23-3.33-3.33-3.22z"/></svg>
+            <div class="tooltip">Roblox 2</div>
+        </a>
+        <a href="https://tiktok.com/@peko.niaw" target="_blank" class="social-btn">
+            <svg viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.01.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93v7.2c0 1.96-.69 3.93-1.92 5.42-1.22 1.48-2.95 2.45-4.85 2.77-1.9.32-3.89.04-5.59-.83-1.7-.87-3-2.31-3.66-4.1-.65-1.78-.63-3.79.06-5.56.69-1.76 2.05-3.15 3.76-3.89 1.7-.73 3.65-.82 5.43-.25v4.06c-.82-.26-1.72-.25-2.52.02-.81.28-1.5 1.25-1.5 2.11 0 .86.69 1.83 1.5 2.11.8.28 1.7.28 2.52.02.82-.25 1.5-1.25 1.5-2.11V.02z"/></svg>
+            <div class="tooltip">TikTok</div>
+        </a>
+        <a href="https://osu.ppy.sh/users/32452561" target="_blank" class="social-btn">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="none" stroke="currentColor" stroke-width="2"/><text x="12" y="16" font-family="Arial" font-size="12" font-weight="bold" text-anchor="middle" fill="currentColor">osu!</text></svg>
+            <div class="tooltip">Osu!</div>
+        </a>
+    </div>
+
+    <div id="main-content">
+        <div id="cursor-dot"></div>
+        <div id="cursor-ring"></div>
+        <div class="aurora-bg"><div class="blob blob1"></div><div class="blob blob2"></div></div>
+        <div id="code-bg" class="code-overlay"></div>
+
+        <select id="theme-selector" onchange="changeTheme(this.value)">
+            <option value="normal" selected>✦ Theme: Normal</option>
+            <option value="red">✦ Theme: Red</option>
+            <option value="dark">✦ Theme: Dark</option>
+        </select>
+
+        <div class="dock-container">
+            <button class="dock-item active" onclick="switchTab('home')">Home</button>
+            <button class="dock-item" onclick="switchTab('about')">About</button>
+            <button class="dock-item" onclick="switchTab('activity')">Activity</button>
+            <button class="dock-item" onclick="switchTab('projects')">Projects</button>
+        </div>
+
+        <div id="home" class="tab-content active">
+            <div class="acrylic-box box-3d scroll-anim" style="cursor: none;">
+                <div id="lanyard-status" onclick="window.open('https://discord.com/users/1077273311211434105', '_blank')">
+                    <div style="position: relative;">
+                        <img id="discord-pfp" src="https://cdn.discordapp.com/embed/avatars/0.png" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
+                        <div id="discord-dot" class="status-dot"></div>
+                    </div>
+                    <div style="flex-grow: 1;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 5px;">
+                            <span id="discord-user" style="font-size: 1.4em; font-weight: 800;">Connecting...</span>
+                            <span id="discord-custom-status" class="lanyard-badge" style="display: none;"></span>
+                        </div>
+                        <div id="discord-activity" style="color: #aaa;">Syncing nodes...</div>
+                        
+                        <div id="spotify-module" class="lanyard-module" style="display: none; border-color: rgba(30, 215, 96, 0.4);">
+                            <img id="spotify-art" style="width: 48px; height: 48px; border-radius: 8px;">
+                            <div>
+                                <div style="color: #1ED760; font-weight: bold; font-size: 0.8em; text-transform: uppercase;">Listening to Spotify</div>
+                                <div id="spotify-song" style="color: white; font-weight: 600;"></div>
+                                <div id="spotify-artist" style="color: #aaa; font-size: 0.9em;"></div>
+                            </div>
+                        </div>
+
+                        <div id="game-module" class="lanyard-module" style="display: none;">
+                            <img id="game-art" style="width: 48px; height: 48px; border-radius: 8px;" src="https://cdn.discordapp.com/embed/avatars/0.png">
+                            <div>
+                                <div style="color: var(--purple-2); font-weight: bold; font-size: 0.8em; text-transform: uppercase;">Currently Running</div>
+                                <div id="game-name" style="color: white; font-weight: 600;"></div>
+                                <div id="game-details" style="color: #aaa; font-size: 0.9em;"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="acrylic-box box-3d scroll-anim">
+                <h2 style="color: var(--purple-2);">System Log</h2>
+                <p>Welcome to my creator console. Here I post raw ideas, project updates, and digital fragments. This space is a direct reflection of my building process. Expect frequent changes and experimental builds.</p>
+            </div>
+
+            <div id="posts-container"></div>
+        </div>
+
+        <div id="about" class="tab-content"><div id="about-container"></div></div>
+        <div id="activity" class="tab-content">
+            <div class="filters">
+                <button class="filter-btn active" onclick="filterActivity('all')">All</button>
+                <button class="filter-btn" onclick="filterActivity('dev')">Dev</button>
+                <button class="filter-btn" onclick="filterActivity('games')">Games</button>
+                <button class="filter-btn" onclick="filterActivity('others')">Others</button>
+            </div>
+            <div id="activity-container"></div>
+        </div>
+        <div id="projects" class="tab-content"><div id="projects-container"></div></div>
+    </div>
+
+    <script>
+        // --- BOOT SEQUENCE ---
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('loader');
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 800);
+                triggerScrollAnimations();
+            }, 1000);
+        });
+
+        // --- BACKGROUND CODE DEFILEMENT ---
+        const codeLines = [ "struct CircleImage: View {", "import SwiftUI", "func fetchData() async {", "let container = NSPersistentContainer(name: \"Model\")", "export default async function Server() { return Node } " ];
+        const codeBg = document.getElementById('code-bg');
+        let content = "";
+        for(let i=0; i<150; i++) content += codeLines[Math.floor(Math.random()*codeLines.length)] + "\n";
+        codeBg.innerText = content;
+
+        // --- CUSTOM CURSOR ---
+        const cursorDot = document.getElementById('cursor-dot');
+        const cursorRing = document.getElementById('cursor-ring');
+        let mouseX = 0, mouseY = 0, ringX = 0, ringY = 0;
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX; mouseY = e.clientY;
+            cursorDot.style.left = `${mouseX}px`; cursorDot.style.top = `${mouseY}px`;
+            if(Math.random() > 0.6) {
+                const p = document.createElement('div');
+                p.className = 'trail-pixel'; p.style.left = `${mouseX}px`; p.style.top = `${mouseY}px`;
+                document.body.appendChild(p); setTimeout(() => p.remove(), 400);
+            }
+        });
+        function animateCursor() {
+            ringX += (mouseX - ringX) * 0.15; ringY += (mouseY - ringY) * 0.15;
+            cursorRing.style.left = `${ringX}px`; cursorRing.style.top = `${ringY}px`;
+            requestAnimationFrame(animateCursor);
+        }
+        animateCursor();
+
+        // --- THEME CHANGER ---
+        function changeTheme(themeName) { document.body.className = `theme-${themeName}`; }
+
+        // --- MEDIA RENDER HELPER ---
+        function renderMedia(data) {
+            let html = '';
+            if (data.image && data.image !== "ignore" && data.image !== "") html += `<img src="${data.image}" class="post-img">`;
+            if (data.video && data.video !== "ignore" && data.video !== "") html += `<iframe class="post-video" src="${data.video}" allowfullscreen></iframe>`;
+            if (data.embed && data.embed !== "ignore" && data.embed !== "") html += `<div style="margin-bottom: 20px;">${data.embed}</div>`;
+            if (data.link && data.link !== "ignore" && data.link !== "") html += `<br><a href="${data.link}" target="_blank" class="external-link">[↗] Access Link</a>`;
+            return html;
+        }
+
+        // --- SITE DATA ---
+        // ADDED MULTIPLE POSTS TO EVERY SECTION TO SHOWCASE STRUCTURE
+        const SITE_DATA = {
+            posts: [ 
+                { date: "OCTOBER 15, 2026", image: "https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&w=800&q=80", TEXTmain: "Glow Engine Finalization", color: "#ec09e5", sub_text: "Optimized the glow rendering pipeline. Transitions are now butter smooth." },
+                { date: "SEPTEMBER 28, 2026", image: "ignore", TEXTmain: "Syntax Highlighting Setup", color: "#B19EEF", sub_text: "Wrote a custom parser to handle markdown and syntax highlighting directly in the terminal.", link: "https://github.com" },
+                { date: "AUGUST 10, 2026", image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80", TEXTmain: "Retro Hardware", color: "#ea3ed3", sub_text: "Experimenting with CRT effects on modern displays." }
+            ],
+            about: [ 
+                { colorTITLE: "#B19EEF", title: "The Vision", sub_text: "Pioneering the next wave of immersive digital architecture." },
+                { colorTITLE: "#ec09e5", title: "Tech Stack", sub_text: "Mostly experimenting with vanilla web technologies, WebGL, and custom intersection observers.", image: "ignore" },
+                { colorTITLE: "#ea3ed3", title: "Contact", sub_text: "Find me on Discord or through my socials on the left. Always open to collaborate." }
+            ],
+            activities: [ 
+                { genre: "dev", date: "TODAY", TEXTmain: "UI Stacking Algorithm", color: "#B19EEF", sub_text: "Replaced the old clunky stacking system with a smooth Intersection Observer fade." },
+                { genre: "games", date: "YESTERDAY", TEXTmain: "Osu! Grind", color: "#ea3ed3", sub_text: "Finally passed that 7 star map. Hands are destroyed.", image: "ignore" },
+                { genre: "dev", date: "LAST WEEK", TEXTmain: "Lanyard Integration", color: "#43b581", sub_text: "Successfully hooked up live Discord presence. Real-time Spotify syncing is flawless." },
+                { genre: "others", date: "OCTOBER 1", TEXTmain: "Late Night Coffee", color: "#ff9999", sub_text: "Trying out a new light roast. 10/10.", image: "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=800&q=80" }
+            ],
+            projects: [ 
+                { title: "Glow Engine v3", date: "IN DEVELOPMENT", colorTitle: "#ec09e5", description: "Pioneering rendering engine focusing purely on bloom, neon, and acrylic materials." },
+                { title: "Project: SYNTH", date: "ARCHIVED 2025", colorTitle: "#B19EEF", description: "A modular music visualizer built purely in CSS and JS.", link: "https://example.com" },
+                { title: "Terminal OS", date: "RELEASED", colorTitle: "#ea3ed3", description: "A simulated command-line interface running directly in the browser.", image: "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?auto=format&fit=crop&w=800&q=80" }
+            ]
+        };
+
+        // --- LANYARD API (RICH PRESENCE) ---
+        const USER_ID = "1077273311211434105";
+        fetch(`https://api.lanyard.rest/v1/users/${USER_ID}`)
+            .then(res => res.json())
+            .then(data => {
+                const d = data.data;
+                // Basic Info
+                document.getElementById('discord-dot').className = `status-dot status-${d.discord_status}`;
+                document.getElementById('discord-user').innerText = d.discord_user.username;
+                if(d.discord_user.avatar) document.getElementById('discord-pfp').src = `https://cdn.discordapp.com/avatars/${USER_ID}/${d.discord_user.avatar}.png`;
+
+                // Custom Status
+                if (d.activities.find(a => a.type === 4)) {
+                    const custom = d.activities.find(a => a.type === 4);
+                    const statusText = `${custom.emoji ? custom.emoji.name + ' ' : ''}${custom.state || ''}`;
+                    if (statusText.trim()) {
+                        const badge = document.getElementById('discord-custom-status');
+                        badge.innerText = statusText;
+                        badge.style.display = 'inline-block';
+                    }
+                }
+
+                // Spotify Status
+                if (d.spotify) {
+                    document.getElementById('spotify-module').style.display = 'flex';
+                    document.getElementById('spotify-art').src = d.spotify.album_art_url;
+                    document.getElementById('spotify-song').innerText = d.spotify.song;
+                    document.getElementById('spotify-artist').innerText = d.spotify.artist;
+                }
+
+                // Game/Rich Presence Status (Filtering out Custom Status & Spotify)
+                const gameActivity = d.activities.find(a => a.type === 0);
+                if (gameActivity) {
+                    document.getElementById('game-module').style.display = 'flex';
+                    document.getElementById('game-name').innerText = gameActivity.name;
+                    document.getElementById('game-details').innerText = gameActivity.details || gameActivity.state || 'Active Process';
+                    // Try to get the large image asset if available
+                    if (gameActivity.assets && gameActivity.assets.large_image) {
+                        // Discord stores images with 'mp:' prefix sometimes
+                        let imgHash = gameActivity.assets.large_image;
+                        if(imgHash.startsWith('mp:')) imgHash = imgHash.replace('mp:', 'https://media.discordapp.net/');
+                        else imgHash = `https://cdn.discordapp.com/app-assets/${gameActivity.application_id}/${imgHash}.png`;
+                        document.getElementById('game-art').src = imgHash;
+                    }
+                }
+
+                if (!d.spotify && !gameActivity) {
+                    document.getElementById('discord-activity').innerText = 'System idle. Monitoring network...';
+                } else {
+                    document.getElementById('discord-activity').style.display = 'none'; // Hide generic text if playing stuff
+                }
+            });
+
+        // --- SMOOTH SCROLL OBSERVER ---
+        const scrollObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+        }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
+
+        function triggerScrollAnimations() { document.querySelectorAll('.scroll-anim').forEach(el => scrollObserver.observe(el)); }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.dock-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(triggerScrollAnimations, 50);
+        }
+
+        // --- RENDER CONTENT ---
+        const postsDiv = document.getElementById('posts-container');
+        SITE_DATA.posts.forEach(p => { postsDiv.innerHTML += `<div class="acrylic-box box-3d scroll-anim"><div class="post-date">${p.date}</div>${renderMedia(p)}<h2 style="color: ${p.color}; margin-top:15px;">${p.TEXTmain}</h2><p>${p.sub_text}</p></div>`; });
+
+        const aboutDiv = document.getElementById('about-container');
+        SITE_DATA.about.forEach(a => { aboutDiv.innerHTML += `<div class="acrylic-box box-glow scroll-anim"><h2 style="color: ${a.colorTITLE};">${a.title}</h2>${renderMedia(a)}<p>${a.sub_text}</p></div>`; });
+
+        function renderActivity(filter = 'all') {
+            const actDiv = document.getElementById('activity-container'); actDiv.innerHTML = ''; 
+            SITE_DATA.activities.forEach((a) => {
+                if (filter === 'all' || a.genre === filter) { actDiv.innerHTML += `<div class="acrylic-box box-3d scroll-anim"><span style="background: rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 10px; font-size: 0.7em; font-weight: bold; text-transform: uppercase; color: var(--purple-2);">${a.genre}</span><div class="post-date" style="margin-top: 15px;">${a.date}</div>${renderMedia(a)}<h2 style="color: ${a.color}; margin-top:15px;">${a.TEXTmain}</h2><p>${a.sub_text}</p></div>`; }
+            });
+            setTimeout(triggerScrollAnimations, 50);
+        }
+        function filterActivity(genre) { document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); renderActivity(genre); }
+        renderActivity();
+
+        const projectsDiv = document.getElementById('projects-container');
+        SITE_DATA.projects.forEach(proj => { projectsDiv.innerHTML += `<div class="acrylic-box box-3d project-item scroll-anim"><div onclick="toggleProject(this.parentNode)" style="cursor: none;"><div class="post-date">${proj.date}</div><h3 class="project-title" style="color: ${proj.colorTitle}">${proj.title}</h3></div><div class="project-details">${renderMedia(proj)}<p>${proj.description}</p></div></div>`; });
+
+        function toggleProject(projElement) {
+            const isExpanded = projElement.classList.contains('expanded');
+            document.querySelectorAll('.project-item').forEach(p => p.classList.remove('expanded'));
+            if (!isExpanded) projElement.classList.add('expanded');
+        }
+    </script>
+</body>
+</html>
